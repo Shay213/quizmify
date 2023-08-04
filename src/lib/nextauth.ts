@@ -1,4 +1,9 @@
-import { DefaultSession, NextAuthOptions, Session } from "next-auth";
+import {
+  DefaultSession,
+  NextAuthOptions,
+  Session,
+  getServerSession,
+} from "next-auth";
 import { PrismaAdapter } from "@next-auth/prisma-adapter";
 import { prisma } from "./db";
 import { DefaultJWT } from "next-auth/jwt";
@@ -59,4 +64,8 @@ export const authOptions: NextAuthOptions = {
       return session;
     },
   },
+};
+
+export const getAuthSession = () => {
+  return getServerSession(authOptions);
 };
