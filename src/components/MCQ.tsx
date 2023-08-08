@@ -11,7 +11,8 @@ import { z } from "zod";
 import { checkAnswerSchema } from "@/schemas/form/quiz";
 import { useToast } from "./ui/use-toast";
 import Link from "next/link";
-import { cn } from "@/lib/utils";
+import { cn, formatTimeDelta } from "@/lib/utils";
+import { differenceInSeconds } from "date-fns";
 
 type Props = {
   game: Game & { questions: Pick<Question, "id" | "options" | "question">[] };
@@ -24,6 +25,7 @@ const MCQ = ({ game }: Props) => {
   const [selectedChoice, setSelectedChoice] = useState(0);
   const [correctAnswers, setCorrectAnswers] = useState(0);
   const [wrongAnswers, setWrongAnswers] = useState(0);
+  const [now, setNow] = useState(new Date());
   const [isEnded, setIsEnded] = useState(false);
   const { toast } = useToast();
 
@@ -84,6 +86,17 @@ const MCQ = ({ game }: Props) => {
   ]);
 
   useEffect(() => {
+    const interval = setInterval(() => {
+      if (!isEnded) {
+        setNow(new Date());
+      }
+    }, 1000);
+    return () => {
+      clearInterval(interval);
+    };
+  }, [isEnded]);
+
+  useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       switch (e.key) {
         case "1":
@@ -115,7 +128,8 @@ const MCQ = ({ game }: Props) => {
       {isEnded ? (
         <div className="flex flex-col justify-center absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 ">
           <div className="px-4 mt-2 font-semibold text-white bg-green-500 rounded-md whitespace-nowrap">
-            You completed in {"3min 4s"}
+            You completed in{" "}
+            {formatTimeDelta(differenceInSeconds(now, game.timeStarted))}
           </div>
           <Link
             href={`/statistics/${game.id}`}
@@ -135,7 +149,8 @@ const MCQ = ({ game }: Props) => {
                 </span>
               </p>
               <div className="flex self-start mt-3 text-slate-400">
-                <Timer className="mr-2" /> <span>00:00</span>
+                <Timer className="mr-2" />
+                {formatTimeDelta(differenceInSeconds(now, game.timeStarted))}
               </div>
             </div>
             <MCQCounter
