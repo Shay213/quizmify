@@ -25,11 +25,22 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { BookOpen, CopyCheck } from "lucide-react";
+import { useMutation } from "@tanstack/react-query";
+import { useRouter } from "next/navigation";
 
 type Props = {};
 type FormData = z.infer<typeof quizCreationSchema>;
 
 const QuizCreation = (props: Props) => {
+  const router = useRouter();
+  const { mutate: getQuestions, isLoading } = useMutation({
+    mutationFn: (data: FormData) =>
+      fetch("http://localhost:3000/api/game", {
+        method: "POST",
+        body: JSON.stringify(data),
+      }).then((res) => res.json()),
+  });
+
   const form = useForm<FormData>({
     resolver: zodResolver(quizCreationSchema),
     defaultValues: {
@@ -41,7 +52,13 @@ const QuizCreation = (props: Props) => {
 
   form.watch();
 
-  const onSubmit = (data: FormData) => {};
+  const onSubmit = (data: FormData) => {
+    getQuestions(data, {
+      onSuccess: ({ gameId }) => {
+        router.push(`/play/${data.type}/${gameId}`);
+      },
+    });
+  };
 
   return (
     <div className="absolute top-1/2 left-1/2 -translate-y-1/2 -translate-x-1/2">
@@ -118,7 +135,9 @@ const QuizCreation = (props: Props) => {
                   <BookOpen className="w-4 h-4 mr-2" /> Open Ended
                 </Button>
               </div>
-              <Button type="submit">Submit</Button>
+              <Button type="submit" disabled={isLoading}>
+                Submit
+              </Button>
             </form>
           </Form>
         </CardContent>

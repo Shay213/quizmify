@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { quizCreationSchema } from "@/schemas/form/quiz";
 import { ZodError } from "zod";
 import { prisma } from "@/lib/db";
+import { strict_output } from "@/lib/gpt";
 
 export async function POST(req: Request, res: Response) {
   try {
@@ -14,7 +15,6 @@ export async function POST(req: Request, res: Response) {
         { status: 401 }
       );
     }
-
     const body = await req.json();
     const { amount, topic, type } = quizCreationSchema.parse(body);
 
@@ -26,11 +26,6 @@ export async function POST(req: Request, res: Response) {
         topic,
       },
     });
-    const response = await fetch(`${process.env.API_URL}/api/questions`, {
-      method: "POST",
-      body: JSON.stringify({ amount, topic, type }),
-    });
-    const gptData = await response.json();
 
     if (type === "mcq") {
       type mcqQuestion = {
@@ -40,11 +35,23 @@ export async function POST(req: Request, res: Response) {
         option2: string;
         option3: string;
       };
-      const questions = gptData.map(
-        ({ question, answer, option1, option2, option3 }: mcqQuestion) => {
-          const options = [answer, option1, option2, option3].sort(
-            () => Math.random() - 0.5
-          );
+      const data = (await strict_output(
+        "You are a helpful AI that is able to generate mcq questions and answers, the length of each answer should not be more than 15 words, store all answers and questions and options in a JSON array",
+        new Array(amount).fill(
+          `You are to generate a random hard mcq question about ${topic}`
+        ),
+        {
+          question: "question",
+          answer: "answer with max length of 15 words",
+          option1: "option1 with max length of 15 words",
+          option2: "option2 with max length of 15 words",
+          option3: "option3 with max length of 15 words",
+        }
+      )) as mcqQuestion[];
+      let manyData = data.map(
+        ({ answer, question, option1, option2, option3 }) => {
+          let options = [answer, option1, option2, option3];
+          options = options.sort(() => Math.random() - 0.5);
           return {
             question,
             answer,
@@ -55,14 +62,25 @@ export async function POST(req: Request, res: Response) {
         }
       );
       await prisma.question.createMany({
-        data: questions,
+        data: manyData,
       });
     } else if (type === "open_ended") {
       type openQuestion = {
         question: string;
         answer: string;
       };
-      const questions = gptData.map(({ answer, question }: openQuestion) => {
+      const data = (await strict_output(
+        "You are a helpful AI that is able to generate a pair of question and answers, the length of each answer should not be more than 15 words, store all the pairs of answers and questions in a JSON array",
+        new Array(amount).fill(
+          `You are to generate a random hard open-ended questions about ${topic}`
+        ),
+        {
+          question: "question",
+          answer: "answer with max length of 15 words",
+        }
+      )) as openQuestion[];
+
+      let manyData = data.map(({ answer, question }: openQuestion) => {
         return {
           question,
           answer,
@@ -71,17 +89,15 @@ export async function POST(req: Request, res: Response) {
         };
       });
       await prisma.question.createMany({
-        data: questions,
+        data: manyData,
       });
     }
+
     return NextResponse.json({ gameId: game.id }, { status: 200 });
   } catch (error) {
     if (error instanceof ZodError) {
       return NextResponse.json({ error: error.issues }, { status: 400 });
     }
-    return NextResponse.json(
-      { error: "Something went wrong!" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error }, { status: 500 });
   }
 }
