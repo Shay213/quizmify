@@ -1,31 +1,28 @@
 "use client";
 
 import { Game, Question } from "@prisma/client";
-import { BarChart, ChevronRight, Loader2, Timer } from "lucide-react";
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useState, useMemo, useCallback, useEffect } from "react";
 import { Card, CardDescription, CardHeader, CardTitle } from "./ui/card";
-import { Button, buttonVariants } from "./ui/button";
-import MCQCounter from "./MCQCounter";
-import { useMutation } from "@tanstack/react-query";
-import { z } from "zod";
-import { checkAnswerSchema } from "@/schemas/form/quiz";
-import { useToast } from "./ui/use-toast";
 import Link from "next/link";
 import { cn, formatTimeDelta } from "@/lib/utils";
 import { differenceInSeconds } from "date-fns";
+import { BarChart, ChevronRight, Loader2, Timer } from "lucide-react";
+import { Button, buttonVariants } from "./ui/button";
+import { useToast } from "./ui/use-toast";
+import { useMutation } from "@tanstack/react-query";
+import { z } from "zod";
+import { checkAnswerSchema } from "@/schemas/form/quiz";
+import BlankAnswerInput from "./BlankAnswerInput";
 
 type Props = {
-  game: Game & { questions: Pick<Question, "id" | "options" | "question">[] };
+  game: Game & { questions: Pick<Question, "id" | "question" | "answer">[] };
 };
-
 type Payload = z.infer<typeof checkAnswerSchema>;
 
-const MCQ = ({ game }: Props) => {
+const OpenEnded = ({ game }: Props) => {
   const [questionIndex, setQuestionIndex] = useState(0);
-  const [selectedChoice, setSelectedChoice] = useState(0);
-  const [correctAnswers, setCorrectAnswers] = useState(0);
-  const [wrongAnswers, setWrongAnswers] = useState(0);
   const [now, setNow] = useState(new Date());
+  const [blankAnswer, setBlankAnswer] = useState("");
   const [isEnded, setIsEnded] = useState(false);
   const { toast } = useToast();
 
@@ -33,44 +30,36 @@ const MCQ = ({ game }: Props) => {
     return game.questions[questionIndex];
   }, [questionIndex, game.questions]);
 
-  const options = useMemo(() => {
-    if (!currentQuestion?.options) return [];
-    return JSON.parse(currentQuestion.options as string) as string[];
-  }, [currentQuestion]);
-
   const { mutate: checkAnswer, isLoading: isChecking } = useMutation({
-    mutationFn: (payload: Payload) =>
-      fetch("http://localhost:3000/api/checkAnswer", {
+    mutationFn: (payload: Payload) => {
+      let filledAnswer = blankAnswer;
+      document.querySelectorAll("#user-blank-input").forEach((input) => {
+        filledAnswer = filledAnswer.replace("_____", input.value);
+        input.value = "";
+      });
+      return fetch("http://localhost:3000/api/checkAnswer", {
         method: "POST",
         body: JSON.stringify(payload),
-      }).then((res) => res.json()),
+      }).then((res) => res.json());
+    },
   });
 
   const handleNext = useCallback(() => {
     if (isChecking) return;
     const payload: Payload = {
       questionId: currentQuestion.id,
-      userAnswer: options[selectedChoice],
+      userAnswer: "",
     };
     checkAnswer(payload, {
-      onSuccess: ({ isCorrect }) => {
-        if (isCorrect) {
-          toast({
-            title: "Correct!",
-            description: "Correct answer",
-            variant: "success",
-          });
-          setCorrectAnswers((prev) => prev + 1);
-        } else {
-          toast({
-            title: "Incorrect!",
-            description: "Incorrect answer",
-            variant: "destructive",
-          });
-          setWrongAnswers((prev) => prev + 1);
-        }
+      onSuccess: ({ percent }) => {
+        toast({
+          title: `Your answer is ${percent}% similar to the correct answer.`,
+          description: "Answers are matched based on similarity comparison",
+          variant: "default",
+        });
         if (questionIndex === game.questions.length - 1) {
           setIsEnded(true);
+          return;
         }
         setQuestionIndex((prev) => prev + 1);
       },
@@ -78,12 +67,10 @@ const MCQ = ({ game }: Props) => {
   }, [
     checkAnswer,
     currentQuestion.id,
-    options,
-    selectedChoice,
-    toast,
-    isChecking,
     game.questions.length,
+    isChecking,
     questionIndex,
+    toast,
   ]);
 
   useEffect(() => {
@@ -100,18 +87,6 @@ const MCQ = ({ game }: Props) => {
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       switch (e.key) {
-        case "1":
-          setSelectedChoice(0);
-          break;
-        case "2":
-          setSelectedChoice(1);
-          break;
-        case "3":
-          setSelectedChoice(2);
-          break;
-        case "4":
-          setSelectedChoice(3);
-          break;
         case "Enter":
           handleNext();
           break;
@@ -154,13 +129,9 @@ const MCQ = ({ game }: Props) => {
                 {formatTimeDelta(differenceInSeconds(now, game.timeStarted))}
               </div>
             </div>
-            <MCQCounter
-              correctAnswers={correctAnswers}
-              wrongAnswers={wrongAnswers}
-            />
           </div>
           <Card className="w-full mt-4">
-            <CardHeader className="flex items-center">
+            <CardHeader className="flex flex-row items-center">
               <CardTitle className="mr-5 text-center divide-y divide-zinc-600/50">
                 <div>{questionIndex + 1}</div>
                 <div className="text-base text-slate-400">
@@ -173,19 +144,10 @@ const MCQ = ({ game }: Props) => {
             </CardHeader>
           </Card>
           <div className="flex flex-col items-center justify-center w-full mt-4">
-            {options.map((option, i) => (
-              <Button
-                key={`${option}${i}`}
-                className="justify-start w-full py-8 mb-4"
-                variant={selectedChoice === i ? "default" : "secondary"}
-                onClick={() => setSelectedChoice(i)}
-              >
-                <div className="flex items-center justify-start">
-                  <div className="p-2 px-3 mr-5 border rounded-md">{i + 1}</div>
-                  <div className="text-start">{option}</div>
-                </div>
-              </Button>
-            ))}
+            <BlankAnswerInput
+              answer={currentQuestion.answer}
+              setBlankAnswer={setBlankAnswer}
+            />
             <Button className="mt-2" onClick={handleNext} disabled={isChecking}>
               {isChecking && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
               Next <ChevronRight className="w-4 h-4 ml-2" />
@@ -197,4 +159,4 @@ const MCQ = ({ game }: Props) => {
   );
 };
 
-export default MCQ;
+export default OpenEnded;
