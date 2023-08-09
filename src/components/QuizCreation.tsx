@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import { useForm } from "react-hook-form";
 import { quizCreationSchema } from "@/schemas/form/quiz";
 import { z } from "zod";
@@ -27,13 +27,19 @@ import { Input } from "@/components/ui/input";
 import { BookOpen, CopyCheck } from "lucide-react";
 import { useMutation } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
+import LoadingQuestions from "./LoadingQuestions";
 
 type Props = {};
 type FormData = z.infer<typeof quizCreationSchema>;
 
 const QuizCreation = (props: Props) => {
   const router = useRouter();
-  const { mutate: getQuestions, isLoading } = useMutation({
+  const {
+    mutate: getQuestions,
+    isLoading,
+    isSuccess,
+    isError,
+  } = useMutation({
     mutationFn: (data: FormData) =>
       fetch("http://localhost:3000/api/game", {
         method: "POST",
@@ -59,6 +65,10 @@ const QuizCreation = (props: Props) => {
       },
     });
   };
+
+  if (isLoading) {
+    return <LoadingQuestions finished={isSuccess || isError} />;
+  }
 
   return (
     <div className="absolute top-1/2 left-1/2 -translate-y-1/2 -translate-x-1/2">

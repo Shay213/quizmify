@@ -77,7 +77,7 @@ const MCQ = ({ game }: Props) => {
     });
   }, [
     checkAnswer,
-    currentQuestion.id,
+    currentQuestion?.id,
     options,
     selectedChoice,
     toast,
