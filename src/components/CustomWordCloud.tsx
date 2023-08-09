@@ -1,50 +1,48 @@
 "use client";
 
 import { useTheme } from "next-themes";
+import { useRouter } from "next/navigation";
 import React, { useCallback } from "react";
 import WordCloud from "react-d3-cloud";
 
-type Props = {};
 type Word = {
   text: string;
   value: number;
 };
+type Props = {
+  topics: Word[];
+};
 
-const CustomWordCloud = (props: Props) => {
+const data = [
+  { text: "Hey", value: 1000 },
+  { text: "lol", value: 200 },
+  { text: "first impression", value: 800 },
+  { text: "very cool", value: 1000000 },
+  { text: "duck", value: 10 },
+];
+
+const CustomWordCloud = ({ topics }: Props) => {
   const { theme } = useTheme();
-  const data = [
-    { text: "Hey", value: 1000 },
-    { text: "lol", value: 200 },
-    { text: "first impression", value: 800 },
-    { text: "very cool", value: 1000000 },
-    { text: "duck", value: 10 },
-  ];
+  const router = useRouter();
 
-  const fontSize = useCallback((word: Word) => Math.log2(word.value) * 5, []);
-  const onWordClick = useCallback((word: Word) => {
-    console.log(`onWordClick: ${word}`);
-  }, []);
-  const onWordMouseOver = useCallback((word: Word) => {
-    console.log(`onWordMouseOver: ${word}`);
-  }, []);
-  const onWordMouseOut = useCallback((word: Word) => {
-    console.log(`onWordMouseOut: ${word}`);
-  }, []);
-
+  const fontSize = useCallback(
+    (word: Word) => Math.log2(word.value * 10) * 5,
+    []
+  );
+  const handleWordClick = (e: MouseEvent, word: Word) => {
+    router.push(`/quiz?topic=${word.text}`);
+  };
   return (
     <WordCloud
-      data={data}
+      data={topics}
       height={550}
       font="Times"
       padding={10}
       fill={theme === "dark" ? "white" : "black"}
       fontSize={fontSize}
-      spiral="rectangular"
       rotate={0}
       random={Math.random}
-      onWordClick={onWordClick}
-      onWordMouseOver={onWordMouseOver}
-      onWordMouseOut={onWordMouseOut}
+      onWordClick={handleWordClick}
     />
   );
 };

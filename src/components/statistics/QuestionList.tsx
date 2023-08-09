@@ -24,7 +24,7 @@ const QuestionList = ({ questions }: Props) => {
         <TableRow>
           <TableHead className="w-[10px]">No.</TableHead>
           <TableHead>Question & Correct Answer</TableHead>
-          <TableHead>Your Answer</TableHead>
+          {gameType === "mcq" && <TableHead>Your Answer</TableHead>}
           {gameType === "open_ended" && (
             <TableHead className="w-[10px] text-right">Accuracy</TableHead>
           )}

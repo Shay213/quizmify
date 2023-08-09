@@ -29,10 +29,12 @@ import { useMutation } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import LoadingQuestions from "./LoadingQuestions";
 
-type Props = {};
+type Props = {
+  topic: string;
+};
 type FormData = z.infer<typeof quizCreationSchema>;
 
-const QuizCreation = (props: Props) => {
+const QuizCreation = ({ topic }: Props) => {
   const router = useRouter();
   const {
     mutate: getQuestions,
@@ -51,7 +53,7 @@ const QuizCreation = (props: Props) => {
     resolver: zodResolver(quizCreationSchema),
     defaultValues: {
       amount: 3,
-      topic: "",
+      topic,
       type: "open_ended",
     },
   });

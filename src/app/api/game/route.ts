@@ -27,6 +27,19 @@ export async function POST(req: Request, res: Response) {
       },
     });
 
+    await prisma.topicCount.upsert({
+      where: { topic },
+      create: {
+        topic,
+        count: 1,
+      },
+      update: {
+        count: {
+          increment: 1,
+        },
+      },
+    });
+
     if (type === "mcq") {
       type mcqQuestion = {
         question: string;
